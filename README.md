@@ -1,6 +1,6 @@
 # TADS 列车到发时刻数据中心
 
-[![Version](https://img.shields.io/badge/version-v26.7.29-blue.svg)](https://github.com/your-org/tads)
+[![Version](https://img.shields.io/badge/version-v26.7.29-red.svg)](https://github.com/linchenlang/TADS-Server/tags)
 [![Python](https://img.shields.io/badge/python-3.8%2B-green.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
