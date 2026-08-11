@@ -1,6 +1,6 @@
 # TADS 列车到发时刻数据中心
 
-[![Version](https://img.shields.io/badge/version-v26.7.29-red.svg)](https://github.com/linchenlang/TADS-Server/tags)
+[![Version](https://img.shields.io/badge/version-v26.8.8-red.svg)](https://github.com/linchenlang/TADS-Server/tags)
 [![Python](https://img.shields.io/badge/python-3.8%2B-green.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)]()
@@ -31,6 +31,12 @@
 
 系统适用于铁路、地铁、物流等企业或部门，支持多用户并发访问，具备完整的权限管理、数据备份与审计能力，无需依赖外部数据库即可运行。
 
+**新版本（v26.8.8）主要增强：**
+- 支持 **V2 实时数据接口**（正晚点、车站大屏、检票口/站台/出站口、列车组图片）
+- **物理密钥认证**升级为 PN532 NFC 读卡器（支持 M1 卡和 NTAG215 卡）
+- **双模式查询**（本地数据 / 外部 API 实时数据一键切换）
+- 客户端完整实现所有服务端查询功能
+
 ---
 
 ## 核心特性
@@ -38,47 +44,53 @@
 | 特性 | 说明 |
 |------|------|
 | **数据管理** | 车次与车站的增删改，经停站（含到发时间、跨天标识）录入与删除，数据实时持久化 |
-| **多维度查询** | 9种查询方式：车次停站数、车次经停详情、车站过路车次、站点时刻表（含上一/下一班）、匹配校验、全局搜索、车次当前位置推算、站间车次查询、车次-车站双向查询 |
+| **多维度查询** | 9种查询方式：车次停站数、车次经停详情（含检票口/站台/出站口）、车站过路车次、站点时刻表（含上一/下一班）、匹配校验、全局搜索、车次当前位置推算、站间车次查询、车次-车站双向查询 |
+| **实时正晚点** | 调用 V2 接口获取列车实时状态，显示晚点/提前分钟数，自动标注“预计正点/晚点” |
+| **车站大屏** | 实时展示车站出发/到达信息，包含检票口、出站口及晚点附加信息 |
+| **列车组图片** | 显示车厢分布图，双击可放大查看，支持多车厢滚动 |
 | **四级权限体系** | 普通用户 → 开发者（标识身份） → 管理员 → Root，逐级提升操作权限，敏感操作需密码验证 |
-| **C/S架构** | 服务端（含GUI管理面板）与客户端分离，客户端通过HTTP API远程访问，本地零存储 |
-| **内嵌API服务** | 服务端自动开启Flask API服务（端口10076），无需单独部署Web服务器 |
-| **物理密钥认证** | Root权限需插入特定U盘（含key.env密钥文件），拔出后自动降级，实现硬件级安全防护 |
+| **物理密钥认证** | Root 和管理员需通过 NFC 读卡器（PN532）验证 M1 卡（4字节 UID）或 NTAG215 卡（7字节 UID），拔出后自动降级 |
+| **双模式查询** | 客户端和服务端均支持一键切换“本地数据”与“外部 API 实时数据”模式 |
 | **还原点备份** | 支持最多3个还原点的创建、恢复、删除与格式化，防止误操作导致数据丢失 |
-| **操作审计** | 所有关键操作（登录、提权、数据变更、还原点操作）均记录日志 |
+| **操作审计** | 所有关键操作（登录、提权、数据变更、还原点操作）均记录日志，支持导出 CSV |
 
 ---
 
 ## 系统架构
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                             客户端层                                │
-│  ┌─────────────────────────┐     ┌─────────────────────────────┐   │
-│  │   TADS_client.exe       │     │   浏览器 / curl / 第三方     │   │
-│  │   (Tkinter GUI)         │     │   HTTP客户端                │    │
-│  └───────────┬─────────────┘     └─────────────┬───────────────┘   │
-│              │ HTTP Request                    │ HTTP Request      │
-│              └────────────────┬────────────────┘                   │
-│                               ▼                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                API服务层（Flask）                             │  │
-│  │                监听端口：10076                                │  │
-│  │              绑定地址：0.0.0.0                                │  │
-│  └──────────────────────────┬───────────────────────────────────┘  │
-│                             ▼                                      │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                   服务端层                                    │  │
-│  │         TADS_server.exe (Tkinter 管理面板)                    │  │
-│  └──────────────────────────┬───────────────────────────────────┘  │
-│                             ▼                                      │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                   数据层                                     │  │
-│  │   ┌─────────────┐  ┌─────────────┐  ┌───────────────────┐    │  │
-│  │   │ data.json   │  │还原点/*.json│  │ log/*.log          │   │  │
-│  │   │ (主数据)    │  │ (备份数据)   │  │ (审计日志)         │   │  │
-│  │   └─────────────┘  └─────────────┘  └───────────────────┘    │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                                 客户端层（TADS_client）                           │
+│  ┌─────────────────────────┐        ┌─────────────────────────────────────────┐ │
+│  │   Tkinter GUI           │        │   API 代理（V1/V2）                     │ │
+│  │   双模式查询开关         │        │   本地数据 / 外部 API 实时模式          │ │
+│  └───────────┬─────────────┘        └─────────────────┬───────────────────────┘ │
+│              │ HTTP Request                          │ HTTP Request              │
+│              └────────────────┬─────────────────────┘                           │
+│                               ▼                                                │
+│  ┌────────────────────────────────────────────────────────────────────────────┐ │
+│  │                    API 服务层（Flask）                                      │ │
+│  │                    监听端口：10076                                          │ │
+│  │                    绑定地址：0.0.0.0                                        │ │
+│  └────────────────────────────┬───────────────────────────────────────────────┘ │
+│                               ▼                                                │
+│  ┌────────────────────────────────────────────────────────────────────────────┐ │
+│  │                        服务端层（TADS_server）                              │ │
+│  │   ┌──────────────┐  ┌─────────────┐  ┌────────────────────────────────┐   │ │
+│  │   │ 数据管理     │  │ 查询引擎   │  │ 权限控制（NFC物理密钥验证）    │   │ │
+│  │   └──────────────┘  └─────────────┘  └────────────────────────────────┘   │ │
+│  └────────────────────────────┬───────────────────────────────────────────────┘ │
+│                               ▼                                                │
+│  ┌────────────────────────────────────────────────────────────────────────────┐ │
+│  │                          数据层                                             │ │
+│  │   ┌─────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │ │
+│  │   │ data.json   │  │ 还原点/*.json│  │ log/*.log    │  │ config.json  │  │ │
+│  │   │ (主数据)    │  │ (备份数据)   │  │ (审计日志)   │  │ (配置+密钥)  │  │ │
+│  │   └─────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  │ │
+│  └────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│  外部数据源（V1/V2 API）：rg-api.zenglingkun.cn, kyfw.12306.cn 等              │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -93,7 +105,7 @@
 | 客户端通信 | Requests |
 | 数据存储 | JSON文件 |
 | 密码认证 | SHA256 + 随机盐（16字节） |
-| 硬件认证 | 物理U盘密钥文件（key.env） |
+| 硬件认证 | PN532 NFC 读卡器（串口通信） |
 | 打包工具 | PyInstaller |
 
 ---
@@ -105,6 +117,7 @@
 **前置条件：**
 - Windows 7/10/11（推荐以管理员身份运行）
 - 固定局域网IP地址（供客户端访问）
+- （可选）PN532 NFC 读卡器（用于物理密钥认证）
 
 **步骤：**
 
@@ -123,7 +136,8 @@
 **首次使用需进行管理员提权：**
 - 点击左侧导航栏 "提权"
 - 点击 "TADS administrator"
-- 输入预设管理员密码（联系系统管理员获取）
+- 输入预设管理员密码，并按照提示将 M1 卡放在读卡器上验证
+- 如需 Root 权限，需 NTAG215 卡验证
 
 ---
 
@@ -132,6 +146,7 @@
 **前置条件：**
 - Windows 7/10/11
 - 能够访问服务端IP和端口10076
+- （可选）PN532 NFC 读卡器（用于客户端物理密钥验证）
 
 **步骤：**
 
@@ -149,17 +164,36 @@
 
 ### 客户端服务器地址配置
 
-客户端 `TADS_client.py` 第21行：
+客户端 `TADS_client.py` 中常量 `DEFAULT_SERVER_IP` 和 `DEFAULT_SERVER_PORT`：
 
 ```python
-API_BASE_URL = "http://192.168.100.103:10076"   # 修改为实际服务器IP
+DEFAULT_SERVER_IP = "192.168.100.101"
+DEFAULT_SERVER_PORT = 10076
 ```
 
-修改后使用PyInstaller重新打包（Python 3.8.10）：
+修改后使用 PyInstaller 重新打包。
+
+---
+
+### 客户端打包命令（使用 PyInstaller）
 
 ```bash
-C:\python3.8.10\python.exe -m PyInstaller --onefile --windowed --name TADS_client --hidden-import=requests --collect-all requests TADS_client.py
+python -m PyInstaller --onefile --windowed --icon=ic_directions_train_128_28252.ico --name=TADS_Client --collect-all=serial --collect-all=cryptography --collect-all=requests --hidden-import=ctypes --hidden-import=tkinter --hidden-import=tkinter.ttk --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageTk --hidden-import=typing --hidden-import=typing_extensions --hidden-import=serial --hidden-import=serial.tools --hidden-import=serial.tools.list_ports --hidden-import=serial.serialwin32 --hidden-import=_winapi TADS_client.py
 ```
+
+> 说明：图标文件 `ic_directions_train_128_28252.ico` 需与 `TADS_client.py` 置于同一目录下。
+
+---
+
+### 服务器端打包命令（使用 PyInstaller）
+
+```bash
+python -m PyInstaller --onefile --windowed --icon=ic_directions_train_128_28252.ico --name=TADS_Server --collect-all=serial --collect-all=cryptography --collect-all=flask --collect-all=jinja2 --collect-all=markupsafe --collect-all=click --hidden-import=ctypes --hidden-import=tkinter --hidden-import=tkinter.ttk --hidden-import=typing --hidden-import=typing_extensions --hidden-import=serial --hidden-import=serial.tools --hidden-import=serial.tools.list_ports --hidden-import=serial.serialwin32 --hidden-import=_winapi TADS_server.py
+```
+
+> 说明：图标文件 `ic_directions_train_128_28252.ico` 需与 `TADS_server.py` 置于同一目录下。
+
+---
 
 ### 数据目录修改（服务端）
 
@@ -199,9 +233,8 @@ DATA_ROOT = r"E:\数据库\TADS_Data"
 | POST | `/api/admin/restore/apply` | 管理员 | 从还原点恢复 |
 | POST | `/api/admin/restore/delete` | 管理员 | 删除还原点 |
 | POST | `/api/admin/restore/format` | 管理员 | 清空还原点 |
-| POST | `/api/admin/update_data` | 管理员 | 更新数据（RailRhythm） |
-
-详细API文档请参阅 [API文档](docs/API.md)。
+| POST | `/api/admin/update_data` | 管理员 | 更新数据 |
+|......|......|......|......|
 
 ---
 
@@ -211,7 +244,6 @@ DATA_ROOT = r"E:\数据库\TADS_Data"
 TADS/
 ├── TADS_server.py              # 服务端主程序（含GUI + API）
 ├── TADS_client.py              # 客户端主程序
-├── TADS_#0.ps1                 # PowerShell命令行管理脚本
 ├── docs/
 │   ├── 技术设计文档.md
 │   ├── 用户手册.md
@@ -256,6 +288,8 @@ E:\数据库\TADS_Data\
 
 ---
 
+## 许可证
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 本项目使用 Apache License 2.0 许可证，详情请见：[LICENSE](LICENSE)
@@ -269,8 +303,26 @@ E:\数据库\TADS_Data\
 | 项目负责人 | Michael |
 | 技术联系人 | linchenlang@outlook.com |
 
+## 数据来源
+
+| 名称 | 网址 |
+|------|----------|
+| RailGo | https://railgo.dev/ |
+
+## 鸣谢
+
+* RailGo及RailGo全体开发人员
+
+* 所有用户
+
+##### 特别鸣谢
+
+* RailGo开发人员之一：辰墨
+
+* TADS-Server开发组所有成员
+
 ---
 
 **TADS** — 让列车时刻数据管理更简单、更安全。
 
-© 2026 Michael. All rights reserved.
+© 2026 QS Studio. All rights reserved.
