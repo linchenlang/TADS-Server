@@ -479,7 +479,7 @@ E:\数据库\TADS_Data\
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-本项目使用 Apache License 2.0 许可证，详情请见：[LICENSE](LICENSE)
+本项目使用 CC BY-NC-SA 4.0 许可证，详情请见：[LICENSE](LICENSE)
 
 ---
 
