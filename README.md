@@ -162,7 +162,7 @@ pyinstaller --onefile --windowed --icon=ic_directions_train_128_28252.ico \
 - ❌ **禁止**：直接用于商业售卖或闭源商业分发（如有商用需求，请联系 QS Studio 获取商业授权）。
 
 **特别鸣谢**：
-- [RailGo](https://railgo.zenglingkun.cn/) 团队提供的外部实时数据接口支持。
+- [RailGo](https://api.railgo.dev/) 团队提供的外部实时数据接口支持。
 - 所有为 TADS 提出建议和测试的社区开发者。
 
 <div align="center">
